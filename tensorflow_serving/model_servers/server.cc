@@ -50,6 +50,7 @@ limitations under the License.
 #include "tensorflow_serving/model_servers/server_core.h"
 #include "tensorflow_serving/servables/tensorflow/session_bundle_config.pb.h"
 #include "tensorflow_serving/servables/tensorflow/thread_pool_factory_config.pb.h"
+#include "tensorflow_serving/servables/tensorflow/util.h"
 
 namespace tensorflow {
 namespace serving {
@@ -136,7 +137,7 @@ BuildServerCredentialsFromSSLConfigFile(const string& ssl_config_file) {
 
   ssl_ops.force_client_auth = ssl_config.client_verify();
 
-  if (ssl_config.custom_ca().size() > 0) {
+  if (!ssl_config.custom_ca().empty()) {
     ssl_ops.pem_root_certs = ssl_config.custom_ca();
   }
 
@@ -190,6 +191,9 @@ Status Server::BuildAndStart(const Options& server_options) {
         "Both server_options.model_base_path and "
         "server_options.model_config_file are empty!");
   }
+
+  SetSignatureMethodNameCheckFeature(
+      server_options.enable_signature_method_name_check);
 
   // For ServerCore Options, we leave servable_state_monitor_creator unspecified
   // so the default servable_state_monitor_creator will be used.
@@ -330,7 +334,7 @@ Status Server::BuildAndStart(const Options& server_options) {
   prediction_service_ =
       absl::make_unique<PredictionServiceImpl>(predict_server_options);
 
-  profiler_service_ = tensorflow::CreateProfilerService();
+  profiler_service_ = tensorflow::profiler::CreateProfilerService();
 
   ::grpc::ServerBuilder builder;
   builder.AddListeningPort(

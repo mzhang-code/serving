@@ -11,16 +11,16 @@ load("//tensorflow_serving:repo.bzl", "tensorflow_http_archive")
 
 tensorflow_http_archive(
     name = "org_tensorflow",
-    sha256 = "70daac490bde59120698023855290b73fc796dc0f2815796837e0902c13510a6",
-    git_commit = "9c9e961174a02f20ec26d114fa02912d0f524598",
+    sha256 = "b9bcb8f035a43820fc7e75fd91b4c508d93daf51066a0aa23a0ba7e4c9e96c4e",
+    git_commit = "2de245e6eeb292083d8c43f85fac74957d8c24b4",
 )
 
 load("@bazel_tools//tools/build_defs/repo:http.bzl", "http_archive")
 
 http_archive(
     name = "rules_pkg",
-    sha256 = "5bdc04987af79bd27bc5b00fe30f59a858f77ffa0bd2d8143d5b31ad8b1bd71c",
-    url = "https://github.com/bazelbuild/rules_pkg/releases/download/0.2.0/rules_pkg-0.2.0.tar.gz",
+    sha256 = "352c090cc3d3f9a6b4e676cf42a6047c16824959b438895a76c2989c6d7c246a",
+    url = "https://github.com/bazelbuild/rules_pkg/releases/download/0.2.5/rules_pkg-0.2.5.tar.gz",
 )
 
 load("@rules_pkg//:deps.bzl", "rules_pkg_dependencies")

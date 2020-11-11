@@ -1,4 +1,4 @@
-/* Copyright 2016 Google Inc. All Rights Reserved.
+/* Copyright 2020 Google Inc. All Rights Reserved.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -12,14 +12,17 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ==============================================================================*/
+#include "tensorflow_serving/experimental/tensorflow/ops/remote_predict/kernels/remote_predict_op_kernel.h"
 
-#include "tensorflow_serving/util/optional.h"
+#include "tensorflow_serving/experimental/tensorflow/ops/remote_predict/kernels/prediction_service_grpc.h"
 
 namespace tensorflow {
 namespace serving {
+namespace {
 
-extern const in_place_t in_place{};
-extern const nullopt_t nullopt{{}};
+REGISTER_KERNEL_BUILDER(Name("TfServingRemotePredict").Device(DEVICE_CPU),
+                        RemotePredictOp<PredictionServiceGrpc>);
 
+}  // namespace
 }  // namespace serving
 }  // namespace tensorflow

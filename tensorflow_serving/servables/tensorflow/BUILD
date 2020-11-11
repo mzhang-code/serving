@@ -1,6 +1,6 @@
 # Description: TensorFlow servables.
 
-load("//tensorflow_serving:oss_or_google.bzl", "if_google")
+load("//tensorflow_serving:oss_or_google.bzl", "if_google", "if_oss")
 load("//tensorflow_serving:serving.bzl", "serving_proto_library", "serving_tensorflow_proto_dep")
 
 package(
@@ -39,6 +39,14 @@ serving_proto_library(
 )
 
 cc_library(
+    name = "resource_estimator",
+    hdrs = ["resource_estimator.h"],
+    deps = ["//tensorflow_serving/util:oss_or_google"] + if_oss([
+        "//tensorflow_serving/servables/tensorflow/oss:resource_estimator",
+    ]) + if_google(["//tensorflow_serving/servables/tensorflow/google:resource_estimator"]),
+)
+
+cc_library(
     name = "bundle_factory_util",
     srcs = ["bundle_factory_util.cc"],
     hdrs = ["bundle_factory_util.h"],
@@ -46,6 +54,7 @@ cc_library(
         "//visibility:public",
     ],
     deps = [
+        ":resource_estimator",
         ":serving_session",
         ":session_bundle_config_cc_proto",
         "//tensorflow_serving/batching:batching_session",
@@ -141,6 +150,8 @@ cc_library(
         "//tensorflow_serving/resources:resources_cc_proto",
         "//tensorflow_serving/session_bundle:session_bundle_util",
         "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:optional",
+        "@com_google_protobuf//:cc_wkt_protos",
         "@org_tensorflow//tensorflow/cc/saved_model:loader",
         "@org_tensorflow//tensorflow/cc/saved_model:tag_constants",
         "@org_tensorflow//tensorflow/core:core_cpu",
@@ -194,7 +205,6 @@ cc_library(
         "//tensorflow_serving/resources:resource_util",
         "//tensorflow_serving/resources:resource_values",
         "//tensorflow_serving/resources:resources_cc_proto",
-        "//tensorflow_serving/util:optional",
         "@org_tensorflow//tensorflow/cc/saved_model:loader",
         "@org_tensorflow//tensorflow/core:lib",
     ],
@@ -346,6 +356,7 @@ cc_library(
         "@org_tensorflow//tensorflow/lite:util",
         "@org_tensorflow//tensorflow/lite/delegates/flex:delegate",
         "@org_tensorflow//tensorflow/lite/kernels:builtin_ops",
+        "@org_tensorflow//tensorflow/lite/kernels/hashtable:hashtable_op_kernels",
         "@org_tensorflow//tensorflow/lite/tools/signature:signature_def_util",
     ],
 )
@@ -379,7 +390,7 @@ cc_binary(
     srcs = ["tflite_session_main.cc"],
     deps = [
         ":tflite_session_lib",
-        "@org_tensorflow//tensorflow/core:framework",
+        "@org_tensorflow//tensorflow/core:lib",
     ],
 )
 
@@ -447,8 +458,8 @@ cc_library(
         ":predict_response_tensor_serialization_option",
         ":util",
         "//tensorflow_serving/apis:predict_cc_proto",
-        "//tensorflow_serving/util:optional",
         "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:optional",
         "@org_tensorflow//tensorflow/cc/saved_model:signature_constants",
         "@org_tensorflow//tensorflow/core:core_cpu",
         "@org_tensorflow//tensorflow/core:lib",
@@ -476,6 +487,7 @@ cc_test(
         ":predict_util",
         ":saved_model_bundle_source_adapter_cc_proto",
         ":session_bundle_config_cc_proto",
+        ":util",
         "//tensorflow_serving/core:availability_preserving_policy",
         "//tensorflow_serving/core/test_util:test_main",
         "//tensorflow_serving/model_servers:model_platform_types",
@@ -555,7 +567,7 @@ cc_library(
         "//tensorflow_serving/apis:classifier",
         "//tensorflow_serving/apis:input_cc_proto",
         "//tensorflow_serving/apis:model_cc_proto",
-        "//tensorflow_serving/util:optional",
+        "@com_google_absl//absl/types:optional",
         "@org_tensorflow//tensorflow/cc/saved_model:loader_lite",
         "@org_tensorflow//tensorflow/cc/saved_model:signature_constants",
         "@org_tensorflow//tensorflow/core:framework",
@@ -570,13 +582,14 @@ cc_test(
     srcs = ["classifier_test.cc"],
     deps = [
         ":classifier",
+        ":util",
         "//tensorflow_serving/apis:classification_cc_proto",
         "//tensorflow_serving/apis:input_cc_proto",
         "//tensorflow_serving/apis:model_cc_proto",
         "//tensorflow_serving/core/test_util:mock_session",
         "//tensorflow_serving/core/test_util:test_main",
         "//tensorflow_serving/test_util",
-        "//tensorflow_serving/util:optional",
+        "@com_google_absl//absl/types:optional",
         "@com_google_protobuf//:protobuf_lite",
         "@org_tensorflow//tensorflow/core:core_cpu",
         "@org_tensorflow//tensorflow/core:lib",
@@ -678,7 +691,7 @@ cc_library(
         "//tensorflow_serving/apis:model_cc_proto",
         "//tensorflow_serving/apis:regression_cc_proto",
         "//tensorflow_serving/apis:regressor",
-        "//tensorflow_serving/util:optional",
+        "@com_google_absl//absl/types:optional",
         "@org_tensorflow//tensorflow/cc/saved_model:loader_lite",
         "@org_tensorflow//tensorflow/cc/saved_model:signature_constants",
         "@org_tensorflow//tensorflow/core:framework",
@@ -693,13 +706,14 @@ cc_test(
     srcs = ["regressor_test.cc"],
     deps = [
         ":regressor",
+        ":util",
         "//tensorflow_serving/apis:input_cc_proto",
         "//tensorflow_serving/apis:model_cc_proto",
         "//tensorflow_serving/apis:regression_cc_proto",
         "//tensorflow_serving/core/test_util:mock_session",
         "//tensorflow_serving/core/test_util:test_main",
         "//tensorflow_serving/test_util",
-        "//tensorflow_serving/util:optional",
+        "@com_google_absl//absl/types:optional",
         "@com_google_protobuf//:protobuf_lite",
         "@org_tensorflow//tensorflow/core:core_cpu",
         "@org_tensorflow//tensorflow/core:lib",
@@ -722,6 +736,7 @@ cc_library(
         "//tensorflow_serving/servables/tensorflow:classifier",
         "//tensorflow_serving/servables/tensorflow:regressor",
         "//tensorflow_serving/servables/tensorflow:util",
+        "@com_google_absl//absl/types:optional",
         "@com_google_protobuf//:protobuf",
         "@org_tensorflow//tensorflow/cc/saved_model:signature_constants",
         "@org_tensorflow//tensorflow/core:framework",
@@ -734,10 +749,12 @@ cc_test(
     size = "medium",
     srcs = ["multi_inference_test.cc"],
     data = [
+        "//tensorflow_serving/servables/tensorflow/testdata:saved_model_half_plus_two_tf2_cpu",
         "@org_tensorflow//tensorflow/cc/saved_model:saved_model_half_plus_two",
     ],
     deps = [
         ":multi_inference",
+        ":util",
         "//tensorflow_serving/apis:classification_cc_proto",
         "//tensorflow_serving/apis:input_cc_proto",
         "//tensorflow_serving/apis:regression_cc_proto",
@@ -768,6 +785,7 @@ cc_library(
         "//tensorflow_serving/apis:input_cc_proto",
         "//tensorflow_serving/apis:model_cc_proto",
         "//tensorflow_serving/model_servers:server_core",
+        "@com_google_absl//absl/types:optional",
         "@com_google_protobuf//:protobuf",
         "@org_tensorflow//tensorflow/cc/saved_model:loader",
         "@org_tensorflow//tensorflow/core:framework",
@@ -781,10 +799,12 @@ cc_test(
     size = "medium",
     srcs = ["multi_inference_helper_test.cc"],
     data = [
+        "//tensorflow_serving/servables/tensorflow/testdata:saved_model_half_plus_two_tf2_cpu",
         "@org_tensorflow//tensorflow/cc/saved_model:saved_model_half_plus_two",
     ],
     deps = [
         ":multi_inference_helper",
+        ":util",
         "//tensorflow_serving/apis:classification_cc_proto",
         "//tensorflow_serving/apis:input_cc_proto",
         "//tensorflow_serving/apis:regression_cc_proto",
@@ -813,7 +833,10 @@ cc_library(
         "//tensorflow_serving/apis:input_cc_proto",
         "//tensorflow_serving/apis:model_cc_proto",
         "//tensorflow_serving/apis/internal:serialized_input_cc_proto",
-        "//tensorflow_serving/util:optional",
+        "//tensorflow_serving/resources:resource_values",
+        "//tensorflow_serving/resources:resources_cc_proto",
+        "//tensorflow_serving/util:file_probing_env",
+        "@com_google_absl//absl/types:optional",
         "@com_google_protobuf//:cc_wkt_protos",
         "@org_tensorflow//tensorflow/cc/saved_model:signature_constants",
         "@org_tensorflow//tensorflow/core:core_cpu",
@@ -830,7 +853,9 @@ cc_test(
     deps = [
         ":util",
         "//tensorflow_serving/core/test_util:test_main",
+        "//tensorflow_serving/servables/tensorflow:bundle_factory_test_util",
         "//tensorflow_serving/test_util",
+        "//tensorflow_serving/util/test_util:mock_file_probing_env",
         "@com_google_protobuf//:cc_wkt_protos",
         "@org_tensorflow//tensorflow/cc/saved_model:signature_constants",
         "@org_tensorflow//tensorflow/core:framework",
